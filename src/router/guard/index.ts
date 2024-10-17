@@ -52,15 +52,13 @@ export const createRouteGuard: BeforeEach = (to, _, blockerOrJump) => {
 
   const checkRouteExistence = (routeName: RouteKey) => {
     return routeName && getIsAuthRouteExist(routeName);
-  };
+  }; // it is captured by the "not-found" route, then check whether the route exists
 
-  // it is captured by the "not-found" route, then check whether the route exists
   if (isNotFoundRoute) {
     if (!to.name || !checkRouteExistence(to.name as RouteKey)) {
       return blockerOrJump();
     }
-    const noPermissionRoute: RouteKey = '403';
-    // If the route exists but no permission, redirect to 403
+    const noPermissionRoute: RouteKey = '403'; // If the route exists but no permission, redirect to 403
     return blockerOrJump({ name: noPermissionRoute });
   }
 
@@ -83,38 +81,35 @@ export const createRouteGuard: BeforeEach = (to, _, blockerOrJump) => {
       callback: () => {
         return blockerOrJump({ name: rootRoute });
       }
-    },
-    // if it is constant route, then it is allowed to access directly
+    }, // if it is constant route, then it is allowed to access directly
     {
       condition: !needLogin,
       callback: () => {
         return handleRouteSwitch(to, blockerOrJump);
       }
-    },
-    // if the route need login but the user is not logged in, then switch to the login page
+    }, // if the route need login but the user is not logged in, then switch to the login page
     {
       condition: !isLogin && needLogin,
       callback: () => {
-        return blockerOrJump({ name: loginRoute, query: { redirect: to.fullPath } });
+        return blockerOrJump({
+          name: loginRoute,
+          query: { redirect: to.fullPath }
+        });
       }
-    },
-    // if the user is logged in and has authorization, then it is allowed to access
+    }, // if the user is logged in and has authorization, then it is allowed to access
     {
       condition: isLogin && needLogin && hasAuth,
       callback: () => {
         return handleRouteSwitch(to, blockerOrJump);
       }
-    },
-    // if the user is logged in but does not have authorization, then switch to the 403 page
+    }, // if the user is logged in but does not have authorization, then switch to the 403 page
     {
       condition: isLogin && needLogin && !hasAuth,
       callback: () => {
         return blockerOrJump({ name: noAuthorizationRoute });
       }
     }
-  ];
-
-  // Find the first matching condition and execute its action
+  ]; // Find the first matching condition and execute its action
 
   const executeRouteSwitch = routeSwitches.find(({ condition }) => condition)?.callback || blockerOrJump;
 

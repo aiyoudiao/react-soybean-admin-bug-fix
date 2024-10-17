@@ -34,7 +34,7 @@ export interface RouterOptions {
 }
 
 export function createRouter({ initRoutes, mode, opt, getReactRoutes, init }: RouterOptions) {
-  const matcher = new CreateRouterMatcher(initRoutes);
+  const matcher = new CreateRouterMatcher(initRoutes, opt?.basename);
 
   const initReactRoutes = initRoutes.map(route => getReactRoutes(route));
 
@@ -50,13 +50,12 @@ export function createRouter({ initRoutes, mode, opt, getReactRoutes, init }: Ro
 
   reactRouter.getBlocker('beforeGuard', onBeforeRouteChange);
 
-  reactRouter.subscribe(afterRouteChange);
-
-  /**
+  reactRouter.subscribe(afterRouteChange); /**
    * Adds React routes to the router.
    *
    * @param routes - An array of elegant constant routes.
    */
+
   function addReactRoutes(parentOrRoute: ElegantConstRoute[] | string, elegantRoutes?: ElegantConstRoute[]) {
     // Flatten nested routes
     let parent: string | null = null;
@@ -74,21 +73,20 @@ export function createRouter({ initRoutes, mode, opt, getReactRoutes, init }: Ro
     const reactRoutes = flattenRoutes
       .map(route => {
         const match = matcher.getRecordMatcher(route.name);
-        if (match) return null;
-        // Add route
-        addRoute(route);
-        // Transform to react-router route
+        if (match) return null; // Add route
+        addRoute(route); // Transform to react-router route
         const reactRoute = getReactRoutes(route);
 
         return reactRoute;
       })
       .filter(Boolean);
-    if (reactRoutes.length < 1) return;
-    // Add to react-router's routes
+    if (reactRoutes.length < 1) return; // Add to react-router's routes
     reactRouter.patchRoutes(parent, reactRoutes as RouteObject[]);
   }
 
   function onBeforeRouteChange({ nextLocation }: Parameters<BlockerFunction>[0]) {
+    console.log(nextLocation, 'nextLocation');
+
     const to = resolve(nextLocation);
 
     if (to.fullPath === currentRoute.fullPath) {
@@ -125,14 +123,13 @@ export function createRouter({ initRoutes, mode, opt, getReactRoutes, init }: Ro
     }
 
     return true;
-  }
-
-  /**
+  } /**
    * Adds a route or updates an existing one.
    *
    * @param parentOrRoute - The parent route or the route to add.
    * @param route - The route to add if parentOrRoute is a string.
    */
+
   function addRoute(parentOrRoute: string | ElegantConstRoute, route?: ElegantConstRoute) {
     let parent: Parameters<(typeof matcher)['addRoute']>[1] | undefined;
     let record;
@@ -158,24 +155,21 @@ export function createRouter({ initRoutes, mode, opt, getReactRoutes, init }: Ro
 
       afterGuards.list()[0]?.(currentRoute, from);
     }
-  }
-
-  /**
+  } /**
    * Resolves a location into a normalized route.
    *
    * @param rawLocation - The raw location to resolve.
    * @param currentLocation - The current location.
    * @returns A normalized loaded route location.
    */
+
   function resolve(
     rawLocation: Location | RouteLocationNamedRaw,
     currentLocation?: RouteLocationNamedRaw
   ): RouteLocationNormalizedLoaded {
     const current = { ...(currentLocation as RouteLocationNamedRaw) };
 
-    let matcherLocation: Location | RouteLocationNamedRaw;
-
-    // path could be relative in object as well
+    let matcherLocation: Location | RouteLocationNamedRaw; // path could be relative in object as well
 
     if ('pathname' in rawLocation) {
       matcherLocation = rawLocation;
@@ -187,6 +181,7 @@ export function createRouter({ initRoutes, mode, opt, getReactRoutes, init }: Ro
         query: cleanParams(rawLocation.query)
       });
     }
+    console.log(matcherLocation);
 
     const matchedRoute = matcher.resolve(matcherLocation, current);
 
@@ -212,10 +207,14 @@ export function createRouter({ initRoutes, mode, opt, getReactRoutes, init }: Ro
     return new Promise((resolved, reject) => {
       init(currentRoute.fullPath)
         .then(res => {
+          console.log(res);
+
           if (!res) {
             reactRouter.initialize();
           } else {
-            reactRouter.initialize().navigate(resolve(res).fullPath);
+            console.log(resolve(res));
+
+            reactRouter.initialize().navigate(resolve(res).fullPath.replace(opt?.basename, ''));
           }
           resolved(true);
         })
@@ -223,23 +222,21 @@ export function createRouter({ initRoutes, mode, opt, getReactRoutes, init }: Ro
           reject(e);
         });
     });
-  }
-
-  /**
+  } /**
    * Gets all the routes currently in the matchers array.
    *
    * @returns An array of matcher objects.
    */
+
   function getRoutes() {
     return matcher.getRoutes().map(routeMatcher => routeMatcher.record);
-  }
-
-  /**
+  } /**
    * Retrieves a route by its name.
    *
    * @param name - The name of the route.
    * @returns The route record or false if not found.
    */
+
   function getRouteByName(name: string) {
     return matcher.getRecordMatcher(name)?.record;
   }
@@ -250,6 +247,7 @@ export function createRouter({ initRoutes, mode, opt, getReactRoutes, init }: Ro
 
   function push(to: RouteLocationNamedRaw | string | Location) {
     const resolved = typeof to === 'string' ? { fullPath: to } : resolve(to);
+    console.log(resolved);
 
     if (!resolved && typeof to !== 'string') {
       const failure = createRouterError<NavigationFailure>(ErrorTypes.NAVIGATION_DUPLICATED, {
@@ -263,14 +261,14 @@ export function createRouter({ initRoutes, mode, opt, getReactRoutes, init }: Ro
     const target = resolved.fullPath;
 
     const state = 'state' in resolved ? resolved.state : null;
+    console.log(target.replace(opt?.basename, ''));
 
     if (target !== currentRoute.fullPath) {
-      reactRouter.navigate(target, { state });
+      reactRouter.navigate(target.replace(opt?.basename, ''), { state });
     }
 
     return Promise.resolve(true);
-  }
-  /**
+  } /**
    * Get route meta by key
    *
    * @param key Route key

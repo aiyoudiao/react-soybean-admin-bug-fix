@@ -36,10 +36,10 @@ export function generatePath(pathTemplate: string, params: { [key: string]: stri
   return path;
 }
 
-export function normalizeRouteRecord(record: ElegantConstRoute): RouteRecordNormalized {
+export function normalizeRouteRecord(record: ElegantConstRoute, basename: string): RouteRecordNormalized {
   return {
     redirect: record.redirect || (record.children && record.children[0].path),
-    path: record.path || '',
+    path: record.path.startsWith('/') ? basename + record.path : record.path || '',
     name: record.name,
     meta: record.meta || {},
     children:
