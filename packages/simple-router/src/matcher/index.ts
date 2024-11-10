@@ -19,26 +19,27 @@ class CreateRouterMatcher {
   // Internal routes maintained for react-router
   matchers: RouteRecordRaw[] = [];
 
+  basename: string = '';
+
   matcherMap = new Map<string, RouteRecordRaw>();
 
   initRoutes: ElegantConstRoute[] = [];
 
-  constructor(routes: ElegantConstRoute[]) {
+  constructor(routes: ElegantConstRoute[], basename: string) {
     this.initRoutes = routes;
     this.initializeRoutes();
+    this.basename = basename;
     this.removeRoute = this.removeRoute.bind(this);
-  }
+  } /** - Initializes the routes by adding each route from the initial routes array. */
 
-  /** - Initializes the routes by adding each route from the initial routes array. */
   initializeRoutes() {
     this.initRoutes.forEach(route => this.addRoute(route));
-  }
-
-  /**
+  } /**
    * -Removes a route from the matcherMap by its name.
    *
    * @param name - The name of the route to remove.
    */
+
   removeMatcherMapByName(name: string) {
     this.matcherMap.delete(name);
   }
@@ -47,32 +48,28 @@ class CreateRouterMatcher {
     // used later on to remove by name
     const isRootAdd = !originalRecord;
 
-    const mainNormalizedRecord = normalizeRouteRecord(record);
+    const mainNormalizedRecord = normalizeRouteRecord(record, this.basename);
     if (import.meta.env.NODE_ENV === 'development') {
       checkChildMissingNameWithEmptyPath(mainNormalizedRecord, parent);
-    }
+    } // generate an array of records to correctly handle aliases
 
-    // generate an array of records to correctly handle aliases
     const normalizedRecords: (typeof mainNormalizedRecord)[] = [mainNormalizedRecord];
 
     let matcher: RouteRecordRaw;
 
     for (const normalizedRecord of normalizedRecords) {
-      const { path } = normalizedRecord;
-      // Build up the path for nested routes if the child isn't an absolute
+      const { path } = normalizedRecord; // Build up the path for nested routes if the child isn't an absolute
       // route. Only add the / delimiter if the child path isn't empty and if the
       // parent path doesn't have a trailing slash
       if (parent && path && path[0] !== '/') {
         const parentPath = parent.record.path as string;
         const connectingSlash = parentPath[parentPath.length - 1] === '/' ? '' : '/';
         normalizedRecord.path = parent.record.path + (path && connectingSlash + path);
-      }
+      } // create the object beforehand, so it can be passed to children
 
-      // create the object beforehand, so it can be passed to children
-      matcher = createRouteRecordMatcher(normalizedRecord, parent);
-
-      // remove the route if named and only for the top record (avoid in nested calls)
+      matcher = createRouteRecordMatcher(normalizedRecord, parent); // remove the route if named and only for the top record (avoid in nested calls)
       // this works because the original record is the first one
+
       if (isRootAdd && record.name) {
         this.removeRoute(record.name);
       }
@@ -84,28 +81,24 @@ class CreateRouterMatcher {
           const childOriginalRecord = originalRecord && originalRecord.children[i];
           this.addRoute(children[i], matcher, childOriginalRecord);
         }
-      }
-
-      // Avoid adding a record that doesn't display anything. This allows passing through records without a component to
+      } // Avoid adding a record that doesn't display anything. This allows passing through records without a component to
       // not be reached and pass through the catch all route
 
       if (matcher.record.name) {
         this.insertMatcher(matcher);
       }
     }
-  }
-
-  /**
+  } /**
    * Removes a route from the matchers and matcherMap. If the route has children, it recursively removes them as well.
    *
    * @param matcherRef - The route reference, which can be a name or a matcher object.
    */
+
   removeRoute(matcherRef: string | RouteRecordRaw) {
     const matcher = typeof matcherRef === 'string' ? this.matcherMap.get(matcherRef) : matcherRef;
 
-    if (!matcher) return;
+    if (!matcher) return; // Recursively remove children
 
-    // Recursively remove children
     matcher.children.forEach(child => this.removeRoute(child));
 
     const index = this.matchers.indexOf(matcher);
@@ -116,14 +109,13 @@ class CreateRouterMatcher {
     if (matcher.record.name) {
       this.removeMatcherMapByName(matcher.record.name);
     }
-  }
-
-  /**
+  } /**
    * Gets a matcher object by its name.
    *
    * @param name - The name of the route to get.
    * @returns The matcher object corresponding to the name, or undefined if not found.
    */
+
   getRecordMatcher(name: string) {
     return this.matcherMap.get(name);
   }
@@ -163,9 +155,7 @@ class CreateRouterMatcher {
       path = location.pathname;
 
       matcher = this.matchers.slice(1).find(m => matchPath(m.record.path, location.pathname));
-      if (!matcher) matcher = this.matchers[0];
 
-      // matcher should have a value after the loop
       query = getQueryParams(location.search);
 
       if (matcher) {
@@ -176,7 +166,7 @@ class CreateRouterMatcher {
         name = matcher.record.name;
         fullPath = transformLocationToFullPath(location);
       }
-      // location is a relative path
+      if (!matcher) matcher = this.matchers[0]; // location is a relative path
     } else {
       // match by name or path of current route
       matcher = currentLocation.name
@@ -208,43 +198,38 @@ class CreateRouterMatcher {
       query,
       meta: mergeMetaFields(matched)
     };
-  }
-
-  /**
+  } /**
    * Gets all the route names currently in the matcherMap.
    *
    * @returns An array of route names.
    */
+
   getAllRouteNames() {
     return Array.from(this.matcherMap.keys());
-  }
-
-  /**
+  } /**
    * Inserts a new matcher into the matchers array and matcherMap.
    *
    * @param matcher - The matcher object to insert.
    */
+
   insertMatcher(matcher: RouteRecordRaw) {
     if (matcher.record.path === '*') {
       this.matchers.unshift(matcher);
     } else {
       this.matchers.push(matcher);
-    }
+    } // only add the original record to the name map
 
-    // only add the original record to the name map
     if (matcher.record.name) this.matcherMap.set(matcher.record.name, matcher);
-  }
-
-  /**
+  } /**
    * Gets all the routes currently in the matchers array.
    *
    * @returns An array of matcher objects.
    */
+
   getRoutes() {
     return this.matchers;
-  }
+  } /** - Resets the matchers array and matcherMap, then re-initializes the routes. */
 
-  /** - Resets the matchers array and matcherMap, then re-initializes the routes. */
   resetMatcher() {
     this.matchers.length = 0;
     this.matcherMap.clear();

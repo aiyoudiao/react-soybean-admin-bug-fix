@@ -2,7 +2,7 @@ import ClassNames from 'classnames';
 import type BScroll from '@better-scroll/core';
 import { PageTab } from '@sa/materials';
 import { useUpdateEffect } from 'ahooks';
-import { useRoute } from '@sa/simple-router';
+import { useRoute, useRouter } from '@sa/simple-router';
 import DarkModeContainer from '@/components/stateless/common/DarkModeContainer';
 import BetterScroll from '@/components/stateless/custom/BetterScroll';
 import { getDarkMode, getThemeSettings } from '@/store/slice/theme';
@@ -16,7 +16,7 @@ import ContextMenu from './ContextMenu';
 
 const GlobalTab = memo(() => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const bsWrapper = useRef<HTMLDivElement>(null);
   const bsWrapperSizeBounding = useRef<{ width: number; left: number }>({ width: 0, left: 0 });
@@ -82,7 +82,7 @@ const GlobalTab = memo(() => {
   }
 
   function handleClickTab(tab: App.Global.Tab) {
-    navigate(tab.fullPath);
+    router.push(tab.fullPath);
   }
 
   function getContextMenuDisabledKeys(tabId: string, index: number) {
